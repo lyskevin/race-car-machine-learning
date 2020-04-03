@@ -1,30 +1,32 @@
 
 class commandLineInterface:
-
-    def __init__(self,mods):
-        self.mods = mods
+    def __init__(self):
+        self.mods = None
         self.sysExit = False
+        self._Commands = {}
+    def setTop(self,top):
+        self.top = top
         self._Commands = {
-            "setsession": mods["recorder"].setSessionName,
-            "ss": mods["recorder"].setSessionName,
+            "setsession": (self.top.recorder.setSessionName,1),
+            "ss": (self.top.recorder.setSessionName,1),
 
-            "startRecording": mods["recorder"].startRecording,
-            "R": mods["recorder"].startRecording,
+            "startRecording": (self.top.recorder.startRecording,0),
+            "R": (self.top.recorder.startRecording,0),
 
-            "stopRecording": mods["recorder"].stopRecording,
-            "X": mods["recorder"].stopRecording,
+            "stopRecording": (self.top.recorder.stopRecording,0),
+            "X": (self.top.recorder.stopRecording,0),
 
-            "exit": self.exit,
-            "help": self.printHelp
+            "exit": (self.exit,0),
+            "help": (self.printHelp,0)
         }
     def exit(self):
-        for n,mod in self.mods.items():
-            if not n == "actuator":
-                mod.exit()
+        self.top.exit()
         self.sysExit =True
+
     def printHelp(self):
         for item in self._Commands.keys():
             print(item)
+
     def parseAndExecute(self,commandstring):
         tokens = commandstring.split(" ")
         if len(tokens) < 1:
@@ -34,7 +36,9 @@ class commandLineInterface:
         if cmdFunc == None:
             print("Invalid Command")
             return None
-        cmdFunc(*tokens[1:])
+        if len(tokens[1:]) != cmdFunc[1]:
+            print("Wrong Number of Args. Correct num args: " + str(cmdFunc[1]) )
+        cmdFunc[0](*tokens[1:])
         
     def run(self):
         while not self.sysExit:

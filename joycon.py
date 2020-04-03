@@ -31,21 +31,13 @@ class joycon:
     _CONTROLLER_ANALOG_MIDDLE_VAL = 127
     _CONTROLLER_ANALOG_DEADZONE_OFFSET = 5
 
-
-
-
-    def __init__(self, actuator):
+    def __init__(self):
         self.isExit = False
-        self.controlMode = 'Manual'
-        self.actuator = actuator
-        self.recorder = None
+        self.disabled = True
 
-        self.direction = 1 #1 = Forward | 0 = Backward
-        self.throttle = 0 
-        self.turnAngle= 0 
-        self.brake = False
-
-        self.recording =False
+        self.top = None
+        self.actuator = None
+        
 
         self._ButtonHandlersNormal ={
             #### ANALOG STICKS ####
@@ -57,7 +49,7 @@ class joycon:
             #### ABXY Buttons ####
             "BTN_EAST": self.nullControl,
             "BTN_SOUTH": self.nullControl,
-            "BTN_NORTH": self.stop,
+            "BTN_NORTH": self.nullControl,
             "BTN_C": self.nullControl,
 
             #### DPAD ####
@@ -76,15 +68,15 @@ class joycon:
         }
         self.handlers = self._ButtonHandlersNormal
 
-
+    def setTop(self,top):
+        self.top = top
+        self.actuator = top.actuator
 
     def processEvent(self,e):
         if e.ev_type == 'Key' or e.ev_type == 'Absolute':
             hdlr = self.handlers.get(e.code)
-            if not hdlr is None:
+            if (not hdlr is None) and (not self.disabled) :
                 hdlr(e)
-                if self.controlMode == "Manual":
-                    self.actuator.actuate(self.direction,self.throttle,self.turnAngle,self.brake)
         
     def nullControl(self,e):
         return None
@@ -92,66 +84,63 @@ class joycon:
     def processThrottle(self,e):
         #print('Set Throttle: ', e.state)
         if e.state < self._CONTROLLER_ANALOG_MIDDLE_VAL - self._CONTROLLER_ANALOG_DEADZONE_OFFSET:
-            self.throttle = (-(e.state - self._CONTROLLER_ANALOG_MIDDLE_VAL)/self._CONTROLLER_ANALOG_MIDDLE_VAL) * 100
-            self.direction = 1
+            throttle = (-(e.state - self._CONTROLLER_ANALOG_MIDDLE_VAL)/self._CONTROLLER_ANALOG_MIDDLE_VAL) * 100
+            direction = 1
             #print('Set Throttle: ', self.throttle)
         elif e.state > self._CONTROLLER_ANALOG_MIDDLE_VAL + self._CONTROLLER_ANALOG_DEADZONE_OFFSET:
-            self.throttle = ((e.state - self._CONTROLLER_ANALOG_MIDDLE_VAL)/(self._CONTROLLER_ANALOG_MIDDLE_VAL+1)) * 100
-            self.direction = 0
+            throttle = ((e.state - self._CONTROLLER_ANALOG_MIDDLE_VAL)/(self._CONTROLLER_ANALOG_MIDDLE_VAL+1)) * 100
+            direction = 0
             #print('Set Throttle: ', self.throttle)
         else:
-            self.throttle = 0
-
+            throttle = 0
+            direction = self.actuator.direction
+        self.actuator.actuate(
+            direction,
+            throttle,
+            self.actuator.turnAngle,
+            self.actuator.brake,
+            self
+            )
 
     def processBrake(self,e):
         #print('Toggling Brake')
         if e.state == 1:
-            self.brake = False if self.brake else True
-
-        
-    def processRevese(self,e):
-        #print('Changing Direction')
-        if e.state == 1:
-            self.direction = 1 if self.direction==0 else 0
-
+            brake = False if self.actuator.brake else True
+            self.actuator.actuate(
+                self.actuator.direction,
+                self.actuator.throttle,
+                self.actuator.turnAngle,
+                brake,
+                self
+            )
 
     def processTurn(self,e):
         #print('Turning Angle: ', e.state)
-        self.turnAngle = ((e.state/255) * 180) - 90
+        turnAngle = ((e.state/255) * 180) - 90
+        self.actuator.actuate(
+            self.actuator.direction,
+            self.actuator.throttle,
+            turnAngle,
+            self.actuator.brake,
+            self
+        )
 
 
     def processExit(self,e):
         print('exiting')
 
     def processRecord(self,e):
-        if e.state == 1 and self.recording == 0:
-            self.recording = self.recorder.startRecording()
-        elif  e.state == 1 and self.recording == 1:
-            self.recorder.stopRecording()
-            self.recording = False
-        return None
+        if e.state == 1:
+            self.top.recorder.toggleRecording()
 
-    def stop(self,e):
-        self.isExit = True
-
-    def printState(self):
-        print("Dir: ",self.direction," Pwr: ",self.throttle, " AGL: ", self.turnAngle, " Brake: ",self.brake )
-
-    def getControlState(self):
-        return (
-            self.direction, #1 = Forward | 0 = Backward
-            self.throttle, 
-            self.turnAngle, 
-            self.brake)
     def exit(self):
         print('Closing Joycon Thread')
         self.isExit = True
     
-    def setRecorder(self, rec):
-        self.recorder = rec
 
     def run(self):
         print('Joycon Thread Started')
+        self.disabled = False
         while not self.isExit:
             events = get_gamepad()
             for event in events:

@@ -53,44 +53,45 @@ import threading
 #     "BTN_TR":HandleRightTrigger,
 #     "BTN_TL":HandleLeftTrigger
 # }
+class top:
+    def __init__(self):
+        self.actuator = actuatorController()
+        self.joycon = joycon()
+        self.recorder = recorder()
+        self.CLI = commandLineInterface()
 
+        self.actuator.setTop(self)
+        self.joycon.setTop(self)
+        self.recorder.setTop(self)
+        self.CLI.setTop(self)
 
-    
+        self.controllerThread = threading.Thread(target=self.joycon.run)
+        self.recorderThread = threading.Thread(target=self.recorder.run)
+
+    def run(self):
+        try:
+            self.controllerThread.start()
+            self.recorderThread.start()
+            self.CLI.run()
+            self.controllerThread.join()
+            self.recorderThread.join()
+            print("exiting")
+        except KeyboardInterrupt:
+            print("Caught Keyboard Interrupt!")
+            self.joycon.exit()
+            self.recorder.exit()
+            self.controllerThread.join()
+            self.recorderThread.join()
+            print("Exit.")
+            
+    def exit(self):
+        self.joycon.exit()
+        self.recorder.exit()
+        
+
 def main():
-    try:
-        motor = actuatorController()
-        print("Created Actuator Objects")
-        controller = joycon(motor)
-        print("Created Controller Objects")
-        recorderInstance = recorder(controller)
-        controller.setRecorder(recorderInstance)
-        print("Created recorder Objects")
-
-        mods = {
-            "recorder": recorderInstance,
-            "controller":controller,
-            "actuator":motor
-        }
-        CLI = commandLineInterface(mods)
-        print("Created CLI Instance")
-        controllerThread = threading.Thread(target=controller.run)
-        recorderThread = threading.Thread(target=recorderInstance.run)
-
-        controllerThread.start()
-        recorderThread.start()
-
-        CLI.run()
-
-        controllerThread.join()
-        recorderThread.join()
-        print("exiting")
-
-    except KeyboardInterrupt:
-        print("Caught Keyboard Interrupt!")
-        controller.exit()
-        recorderInstance.exit()
-        controllerThread.join()
-        recorderThread.join()
+    t = top()
+    t.run()
 
 
 

@@ -2,11 +2,26 @@ import time
 import RPi.GPIO as IO
 from gpiozero import AngularServo
 
+
 class actuatorController:
 
     def __init__(self):
-        self._TRUEZERO = 5
-        self.throttleScalingFactor = 0.25
+        self.top = None
+
+        ###Scaling Constants###
+        self._TRUEZERO = 10
+        self.throttleScalingFactor = 1
+
+        ###Input states###
+        self.direction = 1 #1 = Forward | 0 = Backward
+        self.throttle = 0 
+        self.turnAngle= 0 
+        self.brake = False
+
+        ###Input Source###
+        self.controller = None
+
+
         IO.setwarnings(False)
         IO.setmode(IO.BCM)
         IO.setup(12, IO.OUT)
@@ -18,30 +33,37 @@ class actuatorController:
         self._servo = AngularServo(13, min_angle=-90, max_angle=90)
         self._servo.angle = self._TRUEZERO
 
-    def actuate(self,direction,throttle,angle,brake):
+    def setTop(self,top):
+        self.top = top
+    def getController(self):
+        return self.controller
+    def setController(self,controller):
+        self.controller = controller
+
+
+    def actuate(self,direction,throttle,angle,brake,controller):
+        if not (self.controller is controller):
+            return None
+        self.direction = direction
+        self.throttle = throttle
+        self.turnAngle = angle
+        self.brake = brake
+
         if not brake:
              self._p.ChangeDutyCycle(throttle*self.throttleScalingFactor)
         else:
             self.throttle = 0
+            self._p.ChangeDutyCycle(self.throttle*self.throttleScalingFactor)
 
         if angle < 0:
-            self._servo.angle = (angle/90 * 95) + self._TRUEZERO
+            self._servo.angle = (angle/90 * 100) + self._TRUEZERO
         elif angle > 0:
-            self._servo.angle = (angle/90 * 85) + self._TRUEZERO
+            self._servo.angle = (angle/90 * 80) + self._TRUEZERO
         else:
             self._servo.angle =  self._TRUEZERO
         IO.output(23, direction)
-
-    def stopAllMotors(self):
-        self._p.stop()
-        self.throttle = 0
-        self.brake = True
-     
-    def releaseBrake(self):
-        self.brake =False
-
-    def setDirectionReverse(self):
-        self.direction = 0
+    def getControlState(self):
+        return (self.direction,self.throttle, self.turnAngle, self.brake)
 
     #only call this on exit
     def exit(self):

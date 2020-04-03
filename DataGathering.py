@@ -7,8 +7,8 @@ import threading
 from PIL import Image
 
 class recorder:
-    def __init__(self,controller):
-        self.controller = controller
+    def __init__(self):
+        self.controller = None
         self.cameraHot = False
         self.sysExit = False
         self.sessionName = None
@@ -18,6 +18,11 @@ class recorder:
         if not 'sessions' in l:
             os.mkdir("sessions")
             print("created sessions folder")
+
+    def setTop(self,top):
+        self.top = top
+        self.controller = top.actuator
+        
     def constructFilename(self,i,params):
         direction,throttle,turnAngle,brake = params
         if not direction:
