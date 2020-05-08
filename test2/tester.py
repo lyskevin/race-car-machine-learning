@@ -4,6 +4,8 @@ from DataGathering import recorder
 from CommandParser import commandLineInterface
 from autodriver import autodriver_actuator
 from autodriver import autodriver_controller
+from Allinonedriver import  DriveAgent as DA
+
 import threading
 
 #Button Codes
@@ -59,48 +61,49 @@ class top:
     def __init__(self):
         self.actuator = actuatorController()
         self.joycon = joycon()
-        self.recorder = recorder()
-        self.CLI = commandLineInterface()
+        #self.recorder = recorder()
+        ##self.CLI = commandLineInterface()
         self.autoActuator = autodriver_actuator()
-        self.autoController = autodriver_controller()
+        ##self.autoController = autodriver_controller()
+        self.autopilot =False
 
 
         self.actuator.setTop(self)
         self.joycon.setTop(self)
-        self.recorder.setTop(self)
-        self.CLI.setTop(self)
-        self.autoController.setTop(self)
+        #self.recorder.setTop(self)
+        ##self.CLI.setTop(self)
+        ##self.autoController.setTop(self)
         self.autoActuator.setTop(self)
 
         self.actuator.setController(self.joycon)
         self.controllerThread = threading.Thread(target=self.joycon.run)
-        self.recorderThread = threading.Thread(target=self.recorder.run)
-        self.autoControllerThread = threading.Thread(target=self.autoController.run)
+        ##self.recorderThread = threading.Thread(target=self.recorder.run)
+        ##self.autoControllerThread = threading.Thread(target=self.autoController.run)
 
     def run(self):
         try:
-            self.controllerThread.start()
-            self.recorderThread.start()
+            #self.controllerThread.start()
+            #self.recorderThread.start()
             #self.autoControllerThread.start()
-            self.CLI.run()
-            self.controllerThread.join()
-            self.recorderThread.join()
+            self.DA_obj = DA(self)
+            self.DA_obj.run()
+            #self.recorderThread.join()
             #self.autoControllerThread.join()
             print("exiting")
         except KeyboardInterrupt:
             print("Caught Keyboard Interrupt!")
-            self.joycon.exit()
-            self.recorder.exit()
-            self.autoController.exit()
-            self.controllerThread.join()
-            self.recorderThread.join()
+            #self.joycon.exit()
+            #self.recorder.exit()
+            #self.autoController.exit()
+            #self.controllerThread.join()
+            #self.recorderThread.join()
            # self.autoControllerThread.join()
             print("Exit.")
             
     def exit(self):
         self.joycon.exit()
-        self.recorder.exit()
-        self.autoController.exit()
+        #self.recorder.exit()
+        #self.autoController.exit()
 
 def main():
     t = top()
